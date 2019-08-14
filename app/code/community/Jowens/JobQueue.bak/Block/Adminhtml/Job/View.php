@@ -6,12 +6,12 @@ class Jowens_JobQueue_Block_Adminhtml_Job_View extends Mage_Adminhtml_Block_Widg
     protected $_job;
 
     public function __construct()
-    {
+    {   
         $this->_job = Mage::registry('jowens_jobqueue_job');
 
         $this->_blockGroup = 'jobqueue';
         $this->_controller = 'adminhtml_job';
-
+     
         parent::__construct();
 
         $this->_addButton('back', array(
@@ -19,6 +19,7 @@ class Jowens_JobQueue_Block_Adminhtml_Job_View extends Mage_Adminhtml_Block_Widg
             'onclick' => 'setLocation(\''.$this->getUrl('*/*/', array('store'=>$this->getRequest()->getParam('store', 0))).'\')',
             'class'   => 'back'
         ), 0, -20);
+        
         $confirmMsg = $this->__('Are you sure you want to do this?');
         $resubmitUrl = $this->getUrl('*/*/resubmit', array('id' => $this->_job->getId()));
         $this->_addButton('resubmit', array(
@@ -31,14 +32,14 @@ class Jowens_JobQueue_Block_Adminhtml_Job_View extends Mage_Adminhtml_Block_Widg
             $this->_addButton('cancel', array(
                 'label'     => $this->__('Cancel'),
                 'onclick'   => "confirmSetLocation('{$confirmMsg}', '{$cancelUrl}')",
-            ), 0, -5);
-        }
-    }
-
+            ), 0, -5); 
+        }         
+    }   
+     
     public function getHeaderText()
-    {
-        return $this->__("Job: \"%s\"", $this->_job->getName());
-    }
+    {   
+        return $this->__("Job: \"%s\"", $this->_job->getName()); 
+    }  
 
     protected function _toHtml()
     {
@@ -56,7 +57,7 @@ class Jowens_JobQueue_Block_Adminhtml_Job_View extends Mage_Adminhtml_Block_Widg
         $runAt = (strtotime($this->_job->getRunAt()))
             ? $this->formatDate($this->_job->getRunAt(), Mage_Core_Model_Locale::FORMAT_TYPE_MEDIUM, true)
             : $this->__('N/A');
-        $this->setRunAtHtml($this->escapeHtml($runAt));
+        $this->setRunAtHtml($this->escapeHtml($runAt));   
 
         $status = $this->__("Pending");
         if( $this->_job->getFailedAt()) {
@@ -65,13 +66,13 @@ class Jowens_JobQueue_Block_Adminhtml_Job_View extends Mage_Adminhtml_Block_Widg
              $status = $this->__('In Process');
         }
         $this->setStatusHtml($this->escapeHtml($status));
-
+        
         $this->setErrorHtml($this->escapeHtml($this->_job->getError()));
 
         $createdAt = (strtotime($this->_job->getCreatedAt()))
             ? $this->formatDate($this->_job->getCreatedAt(), Mage_Core_Model_Locale::FORMAT_TYPE_MEDIUM, true)
             : $this->__('N/A');
-        $this->setCreatedAtHtml($this->escapeHtml($createdAt));
+        $this->setCreatedAtHtml($this->escapeHtml($createdAt));        
         return parent::_toHtml();
-    }
+    } 
 }

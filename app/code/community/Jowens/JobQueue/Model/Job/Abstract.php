@@ -2,23 +2,22 @@
 
 abstract class Jowens_JobQueue_Model_Job_Abstract extends Mage_Core_Model_Abstract
 {
-	private $name;
-	private $storeId;
+  private $name;
+  private $storeId;
 
-	public function __construct($name=null) {
-		$this->name = $name ? $name : $this->getType();
-		
-		$this->setStoreId(Mage::app()->getStore()->getStoreId());
-	}
+  public function __construct($name=null) {
+    $this->name = $name ? $name : $this->getType();
+    $this->setStoreId(Mage::app()->getStore()->getStoreId());
+  }
 
-	public abstract function perform();
+  public abstract function perform();
 
   public function performImmediate($retryQueue="default") {
     try {
       $this->perform();
     } catch(Exception $e) {
       $this->enqueue($retryQueue);
-      Mage::log($e);
+      Mage::logException($e);
     }
   }
 
@@ -33,30 +32,30 @@ abstract class Jowens_JobQueue_Model_Job_Abstract extends Mage_Core_Model_Abstra
     $job->save();
   }
 
-	public function setName($name) 
-	{
-		$this->name = $name;
-		return $this;
-	}
+  public function setName($name) 
+  {
+    $this->name = $name;
+    return $this;
+  }
 
-	public function getName() 
-	{
-		return $this->name;
-	}
+  public function getName() 
+  {
+    return $this->name;
+  }
 
-	public function setStoreId($storeId) 
-	{
-		$this->storeId = $storeId;
-		return $this;
-	}
+  public function setStoreId($storeId) 
+  {
+    $this->storeId = $storeId;
+    return $this;
+  }
 
-	public function getStoreId() 
-	{
-		return $this->storeId;
-	}	
+  public function getStoreId() 
+  {
+    return $this->storeId;
+  }	
 
-	public function getType() 
-	{
-		return get_class($this);
-	}
+  public function getType() 
+  {
+    return get_class($this);
+  }
 }
