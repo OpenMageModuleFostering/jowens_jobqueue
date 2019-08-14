@@ -31,8 +31,9 @@ class DJBase {
 
     private static $dsn = "";
     private static $options = array(
-      "mysql_user" => null,
-      "mysql_pass" => null,
+      "mysql_user"    => null,
+      "mysql_pass"    => null,
+      "mysql_retries" => 3
     );
 
     // use either `configure` or `setConnection`, depending on if
@@ -71,24 +72,60 @@ class DJBase {
     }
 
     public static function runQuery($sql, $params = array()) {
-        $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
+        $retries = self::$options["mysql_retries"];
 
-        $ret = array();
-        if ($stmt->rowCount()) {
-            // calling fetchAll on a result set with no rows throws a
-            // "general error" exception
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) $ret []= $r;
+        for ($attempts = 0; $attempts < $retries; $attempts++) {
+            try {
+                $stmt = self::getConnection()->prepare($sql);
+                $stmt->execute($params);
+
+                $ret = array();
+                if ($stmt->rowCount()) {
+                    // calling fetchAll on a result set with no rows throws a
+                    // "general error" exception
+                    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) $ret []= $r;
+                }
+
+                $stmt->closeCursor();
+                return $ret;
+            }
+            catch (PDOException $e) {
+                // Catch "MySQL server has gone away" error.
+                if ($e->errorInfo[1] == 2006) {
+                    self::$db = null;
+                }
+                // Throw all other errors as expected.
+                else {
+                    throw $e;
+                }
+            }
         }
 
-        $stmt->closeCursor();
-        return $ret;
+        throw new DJException("DJJob exhausted retries connecting to database");
     }
 
     public static function runUpdate($sql, $params = array()) {
-        $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->rowCount();
+        $retries = self::$options["mysql_retries"];
+
+        for ($attempts = 0; $attempts < $retries; $attempts++) {
+            try {
+                $stmt = self::getConnection()->prepare($sql);
+                $stmt->execute($params);
+                return $stmt->rowCount();
+            }
+            catch (PDOException $e) {
+                // Catch "MySQL server has gone away" error.
+                if ($e->errorInfo[1] == 2006) {
+                    self::$db = null;
+                }
+                // Throw all other errors as expected.
+                else {
+                    throw $e;
+                }
+            }
+        }
+
+        throw new DJException("DJJob exhausted retries connecting to database");
     }
 
     protected static function log($mesg, $severity=self::CRITICAL) {
@@ -220,8 +257,8 @@ class DJJob extends DJBase {
         # pull the handler from the db
         $handler = $this->getHandler();
         if (!is_object($handler)) {
-            $this->log("[JOB] bad handler for job::{$this->job_id}", self::ERROR);
-            $this->finishWithError("bad handler for job::{$this->job_id}");
+            $msg = "[JOB] bad handler for job::{$this->job_id}";
+            $this->finishWithError($msg);
             return false;
         }
 
@@ -240,8 +277,8 @@ class DJJob extends DJBase {
             $msg = "Caught DJRetryException \"{$e->getMessage()}\" on attempt $attempts/{$this->max_attempts}.";
 
             if($attempts == $this->max_attempts) {
-                $this->log("[JOB] job::{$this->job_id} $msg Giving up.");
-                $this->finishWithError($msg);
+                $msg = "[JOB] job::{$this->job_id} $msg Giving up.";
+                $this->finishWithError($msg, $handler);
             } else {
                 $this->log("[JOB] job::{$this->job_id} $msg Try again in {$e->getDelay()} seconds.", self::WARN);
                 $this->retryLater($e->getDelay());
@@ -250,7 +287,7 @@ class DJJob extends DJBase {
 
         } catch (Exception $e) {
 
-            $this->finishWithError($e->getMessage());
+            $this->finishWithError($e->getMessage(), $handler);
             return false;
 
         }
@@ -290,7 +327,7 @@ class DJJob extends DJBase {
         $this->log("[JOB] completed job::{$this->job_id}", self::INFO);
     }
 
-    public function finishWithError($error) {
+    public function finishWithError($error, $handler = null) {
         $this->runUpdate("
             UPDATE jobs
             SET attempts = attempts + 1,
@@ -304,8 +341,13 @@ class DJJob extends DJBase {
                 $this->job_id
             )
         );
+        $this->log($error, self::ERROR);
         $this->log("[JOB] failure in job::{$this->job_id}", self::ERROR);
         $this->releaseLock();
+
+        if ($handler && ($this->getAttempts() == $this->max_attempts) && method_exists($handler, '_onDjjobRetryError')) {
+          $handler->_onDjjobRetryError($error);
+        }
     }
 
     public function retryLater($delay) {
@@ -351,7 +393,7 @@ class DJJob extends DJBase {
             return false;
         }
 
-        return true;
+        return self::getConnection()->lastInsertId(); // return the job ID, for manipulation later
     }
 
     public static function bulkEnqueue($handlers, $queue = "default", $run_at = null) {

@@ -1,5 +1,14 @@
 <?php
 
+function assert_handler($file, $line, $code, $desc = null) {
+    printf("Assertion failed at %s:%s: %s: %s\n", $file, $line, $code, $desc);
+}
+
+assert_options(ASSERT_ACTIVE, 1);
+assert_options(ASSERT_WARNING, 0);
+assert_options(ASSERT_QUIET_EVAL, 1);
+assert_options(ASSERT_CALLBACK, 'assert_handler');
+
 date_default_timezone_set('America/New_York');
 
 require dirname(__FILE__) . "/../DJJob.php";
@@ -42,7 +51,14 @@ class FailingJob {
     }
 }
 
-var_dump(DJJob::status());
+$status = DJJob::status();
+
+assert('$status["outstanding"] == 0', "Initial outstanding status is incorrect");
+assert('$status["locked"] == 0', "Initial locked status is incorrect");
+assert('$status["failed"] == 0', "Initial failed status is incorrect");
+assert('$status["total"] == 0', "Initial total status is incorrect");
+
+printf("=====================\nStarting run of DJJob\n=====================\n\n");
 
 DJJob::enqueue(new HelloWorldJob("delayed_job"));
 DJJob::bulkEnqueue(array(
@@ -50,8 +66,16 @@ DJJob::bulkEnqueue(array(
     new HelloWorldJob("github"),
 ));
 DJJob::enqueue(new FailingJob());
+// Test unicode support using the classic, rails snowman: http://www.fileformat.info/info/unicode/char/2603/browsertest.htm
+DJJob::enqueue(new HelloWorldJob(html_entity_decode("&#9731;", ENT_HTML5, "UTF-8")));
 
 $worker = new DJWorker(array("count" => 5, "max_attempts" => 2, "sleep" => 10));
 $worker->start();
+printf("\n============\nRun complete\n============\n\n");
 
-var_dump(DJJob::status());
+$status = DJJob::status();
+
+assert('$status["outstanding"] == 0', "Final outstanding status is incorrect");
+assert('$status["locked"] == 0', "Final locked status is incorrect");
+assert('$status["failed"] == 1', "Final failed status is incorrect");
+assert('$status["total"] == 1', "Final total status is incorrect");

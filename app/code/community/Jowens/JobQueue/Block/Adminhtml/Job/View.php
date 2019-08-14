@@ -70,6 +70,5 @@ class Jowens_JobQueue_Block_Adminhtml_Job_View extends Mage_Adminhtml_Block_Widg
             : $this->__('N/A');
         $this->setCreatedAtHtml($this->escapeHtml($createdAt));        
         return parent::_toHtml();
-    }
-    
+    } 
 }

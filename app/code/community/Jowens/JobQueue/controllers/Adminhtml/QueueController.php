@@ -2,11 +2,11 @@
 
 class Jowens_JobQueue_Adminhtml_QueueController extends Mage_Adminhtml_Controller_Action
 {
-	public function indexAction()
+    public function indexAction()
     {
-		$this->_init()
-      		->renderLayout();
-	}
+        $this->_init()
+            ->renderLayout();
+    }
 
     protected function _init()
     {
@@ -19,7 +19,7 @@ class Jowens_JobQueue_Adminhtml_QueueController extends Mage_Adminhtml_Controlle
         return $this;
     }    
 
-	public function viewAction()
+    public function viewAction()
     {   
         $id  = $this->getRequest()->getParam('id');
         $job = Mage::getModel('jobqueue/job');
