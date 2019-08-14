@@ -1,0 +1,16 @@
+{
+    "name": "OpenMageModuleFostering/Jowens_JobQueue",
+    "type": "magento-module",
+    "license": "MIT",
+    "homepage": "",
+    "description": "Asynchronous job queue for Magento",
+    "authors": [
+    {
+        "name": "Jordan Owens",
+        "email": "jkowens@gmail.com"
+    }
+],
+    "suggest": {
+        "magento-hackathon/magento-composer-installer": "*"
+    }
+}
